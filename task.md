@@ -1,0 +1,29 @@
+# Task: Verify Dashboard Text
+
+- [x] Verify login and check for dashboard text <!-- id: 0 -->
+    - [x] Navigate to the login page <!-- id: 1 -->
+    - [x] Enter credentials and login <!-- id: 2 -->
+    - [x] Wait for page to load and check for "Dashboard" text <!-- id: 3 -->
+    - [x] Record findings <!-- id: 4 -->
+- [x] Create a new folder for Playwright <!-- id: 5 -->
+- [x] Initialize Playwright project <!-- id: 6 -->
+    - [x] Create package.json <!-- id: 7 -->
+    - [x] Install @playwright/test <!-- id: 8 -->
+    - [x] Create playwright.config.ts <!-- id: 9 -->
+    - [x] Create sample test <!-- id: 10 -->
+- [x] Commit and push to GitHub <!-- id: 11 -->
+    - [x] Configure Git identity <!-- id: 12 -->
+    - [x] Initialize local repository and commit <!-- id: 13 -->
+    - [x] Add remote and push to master <!-- id: 14 -->
+- [x] Commit recordings to GitHub <!-- id: 15 -->
+    - [x] Create recordings directory <!-- id: 16 -->
+    - [x] Copy files from artifact directory <!-- id: 17 -->
+    - [x] Stage, commit and push <!-- id: 18 -->
+- [x] Add GitHub Actions for CI <!-- id: 19 -->
+    - [x] Create workflow file <!-- id: 20 -->
+    - [x] Commit and push workflow <!-- id: 21 -->
+- [x] Implement Price Change Automation <!-- id: 22 -->
+    - [x] Explore Price Management UI for locators <!-- id: 23 -->
+    - [x] Create PriceLog.spec.ts script <!-- id: 24 -->
+    - [x] Verify script execution <!-- id: 25 -->
+    - [x] Commit and push to GitHub <!-- id: 26 -->
