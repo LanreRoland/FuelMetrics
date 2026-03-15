@@ -1,0 +1,17 @@
+﻿
+Running 1 test using 1 worker
+
+[1A[2K[1/1] [chromium] ΓÇ║ tests\DashboardAudit.spec.ts:6:7 ΓÇ║ Dashboard Functionality Audit ΓÇ║ should audit dashboard widgets and non-functional elements
+[1A[2K[chromium] ΓÇ║ tests\DashboardAudit.spec.ts:6:7 ΓÇ║ Dashboard Functionality Audit ΓÇ║ should audit dashboard widgets and non-functional elements
+--- DASHBOARD AUDIT RESULTS ---
+
+[1A[2K[ info ] No obvious breakages found in the main content area.
+
+[1A[2K-------------------------------
+
+[1A[2K  1 passed (17.9s)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

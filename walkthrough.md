@@ -40,6 +40,12 @@ Below is a recording of the automated price change flow being executed successfu
 
 ![Automated Price Change Flow](C:\Users\USER\.gemini\antigravity\brain\041579f4-0a5e-4b0c-956f-76d8ed123f2c\price_change_debug_lanre_1773431011854.webp)
 
+## Dashboard Functionality Audit
+I performed a deep audit of the non-functional components on the dashboard:
+- **Script**: [DashboardAudit.spec.ts](file:///c:/Users/USER/Lanre/tests/DashboardAudit.spec.ts).
+- **Findings**: Detected critical rendering errors in **ApexCharts** (NaN attributes), which explain why some visual elements might appear broken or empty.
+- **Report**: A detailed breakdown is available in [dashboard_audit_report.md](file:///C:/Users/USER/.gemini/antigravity/brain/041579f4-0a5e-4b0c-956f-76d8ed123f2c/dashboard_audit_report.md).
+
 ## GitHub Actions CI/CD
 I have added a GitHub Actions workflow to automate your testing process:
 - **Automation**: Tests will now run automatically on every push or pull request to the `master` branch.
