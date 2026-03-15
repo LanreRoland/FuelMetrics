@@ -27,19 +27,17 @@ test.describe('Price Change Automation', () => {
       const passwordInput = page.locator('input[type="password"]').first();
       await passwordInput.fill('Tester.1');
       
-      // Press Enter to submit the form, which is often more reliable than just a button click
-      await passwordInput.press('Enter');
-      
-      // Also click the button as a fallback
+      // Firefox often performs better with a direct click on the submission button
       const loginBtn = page.getByRole('button', { name: /Sign in|Sign-in|Login/i }).first();
-      if (await loginBtn.isVisible()) {
-          await loginBtn.click().catch(() => {});
-      }
+      await loginBtn.click();
+      
+      // Wait for navigation and initial dashboard render
+      await page.waitForURL(/.*dashboard.*/i, { timeout: 45000 }).catch(() => {});
+      await page.waitForLoadState('load');
     }
 
-    // Wait for dashboard content to load - more reliable than just checking the URL
-    // We'll look for any element containing "Price management" as a sign of success
-    const dashboardSuccess = page.locator('text=Price management').first();
+    // Wait for dashboard content to load - specifically looking for the sidebar menu
+    const dashboardSuccess = page.getByRole('link', { name: 'Price management', exact: true }).first();
     await dashboardSuccess.waitFor({ state: 'visible', timeout: 60000 });
 
     // 3. Navigate to Price Management > Price Log
