@@ -38,7 +38,7 @@ I have implemented automated price management for you, Lanre:
 ### Recording of Automated Price Change
 Below is a recording of the automated price change flow being executed successfully:
 
-![Automated Price Change Flow](/C:/Users/USER/.gemini/antigravity/brain/041579f4-0a5e-4b0c-956f-76d8ed123f2c/price_change_debug_lanre_1773431011854.webp)
+![Automated Price Change Flow](C:\Users\USER\.gemini\antigravity\brain\041579f4-0a5e-4b0c-956f-76d8ed123f2c\price_change_debug_lanre_1773431011854.webp)
 
 ## GitHub Actions CI/CD
 I have added a GitHub Actions workflow to automate your testing process:

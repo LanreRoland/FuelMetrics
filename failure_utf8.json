@@ -1,0 +1,272 @@
+﻿{
+  "config": {
+    "configFile": "C:\\Users\\USER\\Lanre\\playwright.config.js",
+    "rootDir": "C:/Users/USER/Lanre/tests",
+    "forbidOnly": false,
+    "fullyParallel": true,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/USER/Lanre/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/USER/Lanre/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/USER/Lanre/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "C:/Users/USER/Lanre/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "C:/Users/USER/Lanre/test-results",
+        "repeatEach": 1,
+        "retries": 2,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/USER/Lanre/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "PriceLog.spec.ts",
+      "file": "PriceLog.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Price Change Automation",
+          "file": "PriceLog.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "should successfully update PMS price to 1300 for West region Lagos",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 14921,
+                      "error": {
+                        "message": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n",
+                        "stack": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n\n    at C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts:83:24",
+                        "location": {
+                          "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                          "column": 24,
+                          "line": 83
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 81 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Select retail Outlets\")'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 82 |\u001b[39m     \u001b[36mconst\u001b[39m selectAllBtn \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Select all\")'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 83 |\u001b[39m     \u001b[36mawait\u001b[39m selectAllBtn\u001b[33m.\u001b[39mwaitFor({ state\u001b[33m:\u001b[39m \u001b[32m'visible'\u001b[39m\u001b[33m,\u001b[39m timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 84 |\u001b[39m     \u001b[36mawait\u001b[39m selectAllBtn\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 85 |\u001b[39m\n \u001b[90m 86 |\u001b[39m     \u001b[90m// 6. Request Price Change\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                            "column": 24,
+                            "line": 83
+                          },
+                          "message": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n\n\n  81 |     await page.locator('button:has-text(\"Select retail Outlets\")').click();\n  82 |     const selectAllBtn = page.locator('button:has-text(\"Select all\")');\n> 83 |     await selectAllBtn.waitFor({ state: 'visible', timeout: 30000 });\n     |                        ^\n  84 |     await selectAllBtn.click();\n  85 |\n  86 |     // 6. Request Price Change\n    at C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts:83:24"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-15T10:01:37.500Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\USER\\Lanre\\test-results\\PriceLog-Price-Change-Auto-ae65c--1300-for-West-region-Lagos-chromium\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                        "column": 24,
+                        "line": 83
+                      }
+                    },
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 13199,
+                      "error": {
+                        "message": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n",
+                        "stack": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n\n    at C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts:83:24",
+                        "location": {
+                          "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                          "column": 24,
+                          "line": 83
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 81 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Select retail Outlets\")'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 82 |\u001b[39m     \u001b[36mconst\u001b[39m selectAllBtn \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Select all\")'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 83 |\u001b[39m     \u001b[36mawait\u001b[39m selectAllBtn\u001b[33m.\u001b[39mwaitFor({ state\u001b[33m:\u001b[39m \u001b[32m'visible'\u001b[39m\u001b[33m,\u001b[39m timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 84 |\u001b[39m     \u001b[36mawait\u001b[39m selectAllBtn\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 85 |\u001b[39m\n \u001b[90m 86 |\u001b[39m     \u001b[90m// 6. Request Price Change\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                            "column": 24,
+                            "line": 83
+                          },
+                          "message": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n\n\n  81 |     await page.locator('button:has-text(\"Select retail Outlets\")').click();\n  82 |     const selectAllBtn = page.locator('button:has-text(\"Select all\")');\n> 83 |     await selectAllBtn.waitFor({ state: 'visible', timeout: 30000 });\n     |                        ^\n  84 |     await selectAllBtn.click();\n  85 |\n  86 |     // 6. Request Price Change\n    at C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts:83:24"
+                        },
+                        {
+                          "message": "Error: apiRequestContext._wrapApiCall: ENOENT: no such file or directory, open 'C:\\Users\\USER\\Lanre\\test-results\\.playwright-artifacts-1\\traces\\2415a32ce91b9258286f-e22a8866184feaf832fd-retry1.trace'"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-03-15T10:01:55.963Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\USER\\Lanre\\test-results\\PriceLog-Price-Change-Auto-ae65c--1300-for-West-region-Lagos-chromium-retry1\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\USER\\Lanre\\test-results\\PriceLog-Price-Change-Auto-ae65c--1300-for-West-region-Lagos-chromium-retry1\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                        "column": 24,
+                        "line": 83
+                      }
+                    },
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 13911,
+                      "error": {
+                        "message": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n",
+                        "stack": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n\n    at C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts:83:24",
+                        "location": {
+                          "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                          "column": 24,
+                          "line": 83
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 81 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Select retail Outlets\")'\u001b[39m)\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 82 |\u001b[39m     \u001b[36mconst\u001b[39m selectAllBtn \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Select all\")'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 83 |\u001b[39m     \u001b[36mawait\u001b[39m selectAllBtn\u001b[33m.\u001b[39mwaitFor({ state\u001b[33m:\u001b[39m \u001b[32m'visible'\u001b[39m\u001b[33m,\u001b[39m timeout\u001b[33m:\u001b[39m \u001b[35m30000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 84 |\u001b[39m     \u001b[36mawait\u001b[39m selectAllBtn\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 85 |\u001b[39m\n \u001b[90m 86 |\u001b[39m     \u001b[90m// 6. Request Price Change\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                            "column": 24,
+                            "line": 83
+                          },
+                          "message": "Error: locator.waitFor: Error: strict mode violation: locator('button:has-text(\"Select all\")') resolved to 2 elements:\n    1) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).first()\n    2) <button type=\"buttonType\" data-v-4d9bbd65=\"\" class=\"flex items-center justify-center w-full gap-2 px-2 disabled:cursor-not-allowed border border-gray-300 bg-gray-50 text-gray-700 py-1 text-xs rounded-[8px] opacity-100\">ΓÇª</button> aka getByRole('button', { name: 'Select all' }).nth(1)\n\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Select all\")') to be visible\u001b[22m\n\n\n  81 |     await page.locator('button:has-text(\"Select retail Outlets\")').click();\n  82 |     const selectAllBtn = page.locator('button:has-text(\"Select all\")');\n> 83 |     await selectAllBtn.waitFor({ state: 'visible', timeout: 30000 });\n     |                        ^\n  84 |     await selectAllBtn.click();\n  85 |\n  86 |     // 6. Request Price Change\n    at C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts:83:24"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 2,
+                      "startTime": "2026-03-15T10:02:16.985Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\USER\\Lanre\\test-results\\PriceLog-Price-Change-Auto-ae65c--1300-for-West-region-Lagos-chromium-retry2\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\USER\\Lanre\\tests\\PriceLog.spec.ts",
+                        "column": 24,
+                        "line": 83
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "2415a32ce91b9258286f-e22a8866184feaf832fd",
+              "file": "PriceLog.spec.ts",
+              "line": 6,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-03-15T10:01:35.123Z",
+    "duration": 57554.739,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
