@@ -63,6 +63,12 @@ I have implemented a load simulation script to test concurrent logins:
 - **Functionality**: Simulates 20 users logging in simultaneously using Playwright's parallel worker system.
 - **Execution Command**: `npx playwright test tests/LoadSimulation.spec.ts --workers=20`
 
+## Price Approval Automation
+I have implemented automated tests for price change approvals based on your workflows:
+- **Script**: [PriceApproval.spec.ts](file:///c:/Users/USER/Lanre/tests/PriceApproval.spec.ts).
+- **Test Case 1 (Single Approval)**: Automatically clicks the "Approve" button for individual requests in the table.
+- **Test Case 2 (Bulk Approval)**: Selects all pending requests using the header checkbox and executes the bulk approval from the bottom action bar.
+
 ## LinkedIn Professional Branding
 I have curated and finalized several professional LinkedIn header options for you:
 - **Status**: Approved.
