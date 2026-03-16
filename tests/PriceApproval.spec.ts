@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Price Approval Automation', () => {
+  test.setTimeout(120000); // 2 minutes to accommodate login + navigation
+
   test.beforeEach(async ({ page }) => {
-    // 1. Login
-    await page.goto('https://stations.epump.africa/', { waitUntil: 'networkidle' });
-    
+    // 1. Open the website with a safer wait strategy
+    await page.goto('https://stations.epump.africa/', { waitUntil: 'load', timeout: 60000 });
+
     const emailLocator = page.locator('input[type="email"], [placeholder*="email" i]').first();
     const isLoginPage = await emailLocator.isVisible({ timeout: 5000 }).catch(() => false);
 
@@ -12,7 +14,7 @@ test.describe('Price Approval Automation', () => {
       await emailLocator.fill('mikeandmike@mailinator.com');
       await page.locator('input[type="password"]').first().fill('Tester.1');
       await page.getByRole('button', { name: /Sign in|Sign-in|Login/i }).first().click();
-      await page.waitForURL(/.*dashboard.*/i, { timeout: 30000 }).catch(() => {});
+      await page.waitForURL(/.*dashboard.*/i, { timeout: 30000 }).catch(() => { });
     }
 
     // 2. Navigate to Price Management > Price approval
@@ -23,8 +25,9 @@ test.describe('Price Approval Automation', () => {
     const approvalLink = page.getByRole('link', { name: 'Price approval' }).first();
     await approvalLink.waitFor({ state: 'visible' });
     await approvalLink.click();
-    
-    await page.waitForLoadState('networkidle');
+
+    // 3. Wait for the approval table to appear instead of a broad networkidle
+    await page.getByText(/price change request/i).first().waitFor({ state: 'visible', timeout: 30000 });
   });
 
   test('Single Approval: Successfully approve a single price request', async ({ page }) => {

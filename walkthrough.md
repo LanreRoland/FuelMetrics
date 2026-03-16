@@ -69,6 +69,12 @@ I have implemented automated tests for price change approvals based on your work
 - **Test Case 1 (Single Approval)**: Automatically clicks the "Approve" button for individual requests in the table.
 - **Test Case 2 (Bulk Approval)**: Selects all pending requests using the header checkbox and executes the bulk approval from the bottom action bar.
 
+### Robustness & Best Practices
+I have optimized the scripts to prevent timeout errors:
+- **Expanded Timeouts**: Increased test timeout to 120s to accommodate dashboard rendering.
+- **Improved Loading Strategy**: Switched from `networkidle` to the more reliable `load` strategy.
+- **Explicit Element Waits**: Tests now wait for specific UI elements before interacting, reducing flakiness.
+
 ## LinkedIn Professional Branding
 I have curated and finalized several professional LinkedIn header options for you:
 - **Status**: Approved.
