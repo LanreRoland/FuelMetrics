@@ -64,10 +64,10 @@ I have implemented a load simulation script to test concurrent logins:
 - **Execution Command**: `npx playwright test tests/LoadSimulation.spec.ts --workers=20`
 
 ## Price Approval Automation
-I have implemented automated tests for price change approvals based on your workflows:
-- **Script**: [PriceApproval.spec.ts](file:///c:/Users/USER/Lanre/tests/PriceApproval.spec.ts).
-- **Test Case 1 (Single Approval)**: Automatically clicks the "Approve" button for individual requests in the table.
-- **Test Case 2 (Bulk Approval)**: Selects all pending requests using the header checkbox and executes the bulk approval from the bottom action bar.
+I have refactored the price change approval tests into separate files for better reliability:
+- **Single Approval**: [SingleApproval.spec.ts](file:///c:/Users/USER/Lanre/tests/SingleApproval.spec.ts).
+- **Bulk Approval**: [BulkApproval.spec.ts](file:///c:/Users/USER/Lanre/tests/BulkApproval.spec.ts).
+- **Update**: The original `PriceApproval.spec.ts` has been deleted to avoid redundancy and flaky parallel execution.
 
 ### Robustness & Best Practices
 I have optimized the scripts to prevent timeout errors:
