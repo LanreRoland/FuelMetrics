@@ -75,6 +75,10 @@ I have optimized the scripts to prevent timeout errors:
 - **Improved Loading Strategy**: Switched from `networkidle` to the more reliable `load` strategy.
 - **Explicit Element Waits**: Tests now wait for specific UI elements before interacting, reducing flakiness.
 
+### Browser Standardization
+- **Environment**: All tests are now configured to run exclusively in **Google Chrome**.
+- **Configuration**: Updated `playwright.config.js` to use the `chrome` channel for all projects.
+
 ## LinkedIn Professional Branding
 I have curated and finalized several professional LinkedIn header options for you:
 - **Status**: Approved.
