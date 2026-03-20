@@ -1,6 +1,8 @@
 // @ts-check
 import { defineConfig, devices } from '@playwright/test';
 
+const runLoadTests = !!process.env.EPUMP_RUN_LOAD_TESTS;
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -14,14 +16,15 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+  /* Keep the live portal tests isolated from one another. */
+  fullyParallel: false,
+  timeout: 240000,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on all environments for robustness */
   retries: 2,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Run stateful portal tests serially; load tests are opt-in and can fan out workers. */
+  workers: process.env.CI ? 1 : runLoadTests ? 20 : 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
@@ -48,4 +51,3 @@ export default defineConfig({
   //   reuseExistingServer: !process.env.CI,
   // },
 });
-

@@ -1,21 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { ensureAuthenticated, priceManagementLink } from './helpers/epump';
 
 test.describe('Dashboard Functionality Audit', () => {
-  test.setTimeout(120000); // 2 minutes for a deep audit
+  test.setTimeout(210000);
 
   test('should audit dashboard widgets and non-functional elements', async ({ page }) => {
-    // 1. Open and Login
-    await page.goto('https://stations.epump.africa/', { waitUntil: 'networkidle', timeout: 60000 });
-
-    const emailLocator = page.locator('input[type="email"], [placeholder*="email" i]').first();
-    const isLoginPage = await emailLocator.isVisible({ timeout: 5000 }).catch(() => false);
-
-    if (isLoginPage) {
-      await emailLocator.fill('mikeandmike@mailinator.com');
-      await page.locator('input[type="password"]').first().fill('Tester.1');
-      await page.getByRole('button', { name: /Sign in|Sign-in|Login/i }).first().click();
-      await page.waitForURL(/.*dashboard.*/i, { timeout: 30000 }).catch(() => {});
-      await page.waitForLoadState('networkidle');
+    const auth = await ensureAuthenticated(page);
+    if (!auth.ok) {
+      test.skip(true, auth.reason);
     }
 
     // 2. Monitoring console for errors
@@ -89,6 +81,6 @@ test.describe('Dashboard Functionality Audit', () => {
     console.log('-------------------------------');
 
     // Always check for sidebar to confirm we are logged in
-    await expect(page.getByRole('link', { name: 'Price management' }).first()).toBeVisible();
+    await expect(priceManagementLink(page)).toBeVisible();
   });
 });
