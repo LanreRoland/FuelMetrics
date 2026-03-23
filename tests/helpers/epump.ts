@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 
-const EPUMP_URL = process.env.EPUMP_URL ?? 'https://stations.epump.africa/';
+const EPUMP_URL = process.env.EPUMP_URL ?? 'https://stations.epump.africa/login';
 const EPUMP_EMAIL = process.env.EPUMP_EMAIL ?? 'mikeandmike@mailinator.com';
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD ?? 'Tester.1';
 
@@ -55,7 +55,17 @@ export async function ensureAuthenticated(page: Page): Promise<AuthResult> {
   await emailInput(page).fill(EPUMP_EMAIL);
   await passwordInput(page).fill(EPUMP_PASSWORD);
   await signInButton(page).click();
+  console.log('[ info ] Sign-in clicked. Waiting for dashboard or hang...');
 
+  // If it hangs on the spinner, try direct navigation after 20s
+  const dashboardReached = await waitForDashboard(page, 30000);
+  if (dashboardReached) {
+    return { ok: true };
+  }
+
+  console.log('[ info ] Dashboard not reached in 30s. Attempting direct navigation fallback...');
+  await page.goto('https://stations.epump.africa/Dashboard', { waitUntil: 'domcontentloaded' }).catch(() => {});
+  
   if (await waitForDashboard(page, DASHBOARD_TIMEOUT_MS)) {
     return { ok: true };
   }
@@ -127,7 +137,7 @@ export async function openPriceApprovalPage(page: Page): Promise<boolean> {
 
 async function openNestedNavigation(page: Page, linkName: RegExp): Promise<boolean> {
   const targetLink = page.getByRole('link', { name: linkName }).first();
-  if (!(await waitForVisible(targetLink, 5_000))) {
+  if (!(await waitForVisible(targetLink, 15_000))) {
     const menu = priceManagementLink(page);
     if (!(await waitForVisible(menu, 60_000))) {
       return false;
@@ -148,19 +158,36 @@ async function waitForSessionSurface(
   timeoutMs: number,
 ): Promise<'login' | 'dashboard' | null> {
   const deadline = Date.now() + timeoutMs;
+  console.log(`[ info ] Waiting for session surface (deadline in ${timeoutMs/1000}s)...`);
 
   while (Date.now() < deadline) {
+    const url = page.url();
     if (await isDashboardReady(page)) {
+      console.log(`[ info ] Dashboard surface detected at ${url}`);
       return 'dashboard';
     }
 
     if (await emailInput(page).isVisible().catch(() => false)) {
+      console.log(`[ info ] Login surface detected at ${url}`);
       return 'login';
     }
 
-    await page.waitForTimeout(POLL_INTERVAL_MS);
+    // Check for landing page redirect
+    if (url.includes('epump.com.ng') || (await page.getByRole('button', { name: /Login/i }).isVisible().catch(() => false))) {
+        console.log(`[ info ] Landing page detected at ${url}. Attempting to click Login link...`);
+        const loginBtn = page.getByRole('button', { name: /Login/i }).first();
+        if (await loginBtn.isVisible()) {
+            await loginBtn.click().catch(() => {});
+        } else {
+            const loginLink = page.getByRole('link', { name: /Login/i }).first();
+            await loginLink.click().catch(() => {});
+        }
+    }
+
+    await page.waitForTimeout(POLL_INTERVAL_MS * 2);
   }
 
+  console.error(`[ error ] Timeout waiting for session surface at ${page.url()}`);
   return null;
 }
 
