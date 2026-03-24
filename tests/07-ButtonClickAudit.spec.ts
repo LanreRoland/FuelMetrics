@@ -40,6 +40,9 @@ function isNonActionableClickError(message: string): boolean {
     /page has navigated away/i,
     /target closed/i,
     /timeout .*click/i,
+    /click.*timeout/i,
+    /locator\.click:\s*timeout \d+ms exceeded/i,
+    /timeout \d+ms exceeded/i,
     /not enabled/i,
     /no node found for selector/i,
   ].some((pattern) => pattern.test(message));
