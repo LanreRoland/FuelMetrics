@@ -1,12 +1,19 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuthenticated, priceManagementLink } from './helpers/epump';
+import {
+  assertStatusCodeAudit,
+  ensureAuthenticated,
+  priceManagementLink,
+  startStatusCodeAudit,
+} from './helpers/epump';
 
 test.describe('Dashboard Functionality Audit', () => {
   test.setTimeout(210000);
 
   test('should audit dashboard widgets and non-functional elements', async ({ page }) => {
+    const statusAudit = startStatusCodeAudit(page);
     const auth = await ensureAuthenticated(page);
     if (!auth.ok) {
+      statusAudit.stop();
       test.skip(true, auth.reason);
     }
 
@@ -82,5 +89,6 @@ test.describe('Dashboard Functionality Audit', () => {
 
     // Always check for sidebar to confirm we are logged in
     await expect(priceManagementLink(page)).toBeVisible();
+    await assertStatusCodeAudit(page, statusAudit, '06-DashboardAudit.spec.ts');
   });
 });

@@ -1,5 +1,10 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
-import { ensureAuthenticated, type AuthResult } from './helpers/epump';
+import {
+  assertStatusCodeAudit,
+  ensureAuthenticated,
+  startStatusCodeAudit,
+  type AuthResult,
+} from './helpers/epump';
 
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
 
@@ -370,9 +375,11 @@ test.describe('Pump Calibration Automation', () => {
   test.setTimeout(420_000);
 
   test('should calibrate all selected pumps for West region Lagos and Ekiti outlets', async ({ page }) => {
+    const statusAudit = startStatusCodeAudit(page);
     // Authenticate first, then open the calibration drawer from the sidebar flow.
     const auth = await authenticateWithRetry(page);
     if (!auth.ok) {
+      statusAudit.stop();
       test.skip(true, auth.reason);
     }
 
@@ -426,5 +433,6 @@ test.describe('Pump Calibration Automation', () => {
     );
 
     await expect(modalPassword).not.toBeVisible({ timeout: 30_000 });
+    await assertStatusCodeAudit(page, statusAudit, '11-PumpCalibration.spec.ts');
   });
 });

@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import {
+  assertStatusCodeAudit,
   ensureAuthenticated,
   openPriceApprovalPage,
+  startStatusCodeAudit,
   waitForVisible,
 } from './helpers/epump';
 
@@ -9,12 +11,15 @@ test.describe('Single Price Approval', () => {
   test.setTimeout(240000);
 
   test('Successfully approve a single price request', async ({ page }) => {
+    const statusAudit = startStatusCodeAudit(page);
     const auth = await ensureAuthenticated(page);
     if (!auth.ok) {
+      statusAudit.stop();
       test.skip(true, auth.reason);
     }
 
     if (!(await openPriceApprovalPage(page))) {
+      statusAudit.stop();
       test.skip(true, 'The Price approval page did not become available after authentication.');
     }
 
@@ -23,12 +28,14 @@ test.describe('Single Price Approval', () => {
 
     if (await waitForVisible(noRequestsMsg, 15000)) {
       console.log('[ info ] No price change requests found. Skipping approval.');
+      await assertStatusCodeAudit(page, statusAudit, '03-SingleApproval.spec.ts');
       return;
     }
 
     console.log('[ info ] Waiting for "View" button in the queue...');
     if (!(await waitForVisible(firstViewBtn, 45000))) {
       await page.screenshot({ path: 'approval-queue-missing.png' });
+      statusAudit.stop();
       test.skip(true, 'The approval queue did not expose a "View" button.');
     }
 
@@ -48,6 +55,7 @@ test.describe('Single Price Approval', () => {
         await globalApproveBtn.click();
       } else {
         await page.screenshot({ path: 'approve-button-missing.png' });
+        statusAudit.stop();
         test.skip(true, 'A request opened, but no "Approve" button was found.');
       }
     } else {
@@ -61,5 +69,6 @@ test.describe('Single Price Approval', () => {
     await expect(dialog).not.toBeVisible({ timeout: 15000 }).catch(() => {
       console.warn('[ warn ] Dialog did not close automatically after approval.');
     });
+    await assertStatusCodeAudit(page, statusAudit, '03-SingleApproval.spec.ts');
   });
 });

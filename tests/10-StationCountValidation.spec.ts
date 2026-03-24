@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { ensureAuthenticated } from './helpers/epump';
+import {
+  assertStatusCodeAudit,
+  ensureAuthenticated,
+  startStatusCodeAudit,
+} from './helpers/epump';
 
 const EXPECTED_STATION_COUNT = '150';
 
@@ -43,14 +47,17 @@ async function getStationCount(page: Page): Promise<string | null> {
 }
 
 test.describe('Dashboard Station Count Validation', () => {
-  test.setTimeout(120000);
+  test.setTimeout(240000);
 
   test('should show 150 stations in the station information widget', async ({ page }) => {
+    const statusAudit = startStatusCodeAudit(page);
     const auth = await ensureAuthenticated(page);
     if (!auth.ok) {
+      statusAudit.stop();
       test.skip(true, `Authentication failed: ${auth.reason}`);
     }
 
     await expect.poll(() => getStationCount(page), { timeout: 30000 }).toBe(EXPECTED_STATION_COUNT);
+    await assertStatusCodeAudit(page, statusAudit, '10-StationCountValidation.spec.ts');
   });
 });

@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuthenticated, priceManagementLink } from './helpers/epump';
+import {
+    assertStatusCodeAudit,
+    ensureAuthenticated,
+    priceManagementLink,
+    startStatusCodeAudit,
+} from './helpers/epump';
 
 /**
  * 08-DashboardDataValidation.spec.ts
@@ -12,6 +17,7 @@ test.describe('Dashboard Availability Validation', () => {
     test.setTimeout(120000);
 
     test('should load the dashboard shell and core widgets', async ({ page }) => {
+        const statusAudit = startStatusCodeAudit(page);
         const nanConsoleErrors: string[] = [];
         page.on('console', msg => {
             if (msg.type() === 'error' || msg.type() === 'warning') {
@@ -24,6 +30,7 @@ test.describe('Dashboard Availability Validation', () => {
 
         const auth = await ensureAuthenticated(page);
         if (!auth.ok) {
+            statusAudit.stop();
             test.skip(true, `Authentication failed: ${auth.reason}`);
         }
 
@@ -49,5 +56,6 @@ test.describe('Dashboard Availability Validation', () => {
         if (nanConsoleErrors.length > 0) {
             console.warn(`[ warn ] Ignoring ${nanConsoleErrors.length} NaN-related console messages while validating dashboard availability.`);
         }
+        await assertStatusCodeAudit(page, statusAudit, '08-DashboardDataValidation.spec.ts');
     });
 });

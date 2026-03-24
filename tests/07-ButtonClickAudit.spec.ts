@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 import type { Page } from '@playwright/test';
-import { ensureAuthenticated, waitForDashboard } from './helpers/epump';
+import {
+  assertStatusCodeAudit,
+  ensureAuthenticated,
+  startStatusCodeAudit,
+  waitForDashboard,
+} from './helpers/epump';
 
 /**
  * 07-ButtonClickAudit.spec.ts
@@ -151,10 +156,12 @@ test.describe('Dashboard Button Click Audit', () => {
   test.setTimeout(300000);
 
   test('should click every clickable element on the dashboard and report status', async ({ page }) => {
+    const statusAudit = startStatusCodeAudit(page);
     const auth = await ensureAuthenticated(page);
     if (!auth.ok) {
       console.error(`[ error ] Authentication failed: ${auth.reason}`);
       await page.screenshot({ path: 'auth-failure.png' });
+      statusAudit.stop();
       test.skip(true, auth.reason);
     }
 
@@ -270,5 +277,6 @@ test.describe('Dashboard Button Click Audit', () => {
     await page.screenshot({ path: 'button-audit-final.png', fullPage: true });
 
     expect(failCount).toBe(0);
+    await assertStatusCodeAudit(page, statusAudit, '07-ButtonClickAudit.spec.ts');
   });
 });

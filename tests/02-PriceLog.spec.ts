@@ -1,7 +1,9 @@
 import { test, expect } from '@playwright/test';
 import {
+  assertStatusCodeAudit,
   ensureAuthenticated,
   openPriceLogPage,
+  startStatusCodeAudit,
   waitForVisible,
 } from './helpers/epump';
 
@@ -9,17 +11,21 @@ test.describe('Price Change Automation', () => {
   test.setTimeout(240000);
 
   test('should successfully update PMS price to 1300 for West region Lagos', async ({ page }) => {
+    const statusAudit = startStatusCodeAudit(page);
     const auth = await ensureAuthenticated(page);
     if (!auth.ok) {
+      statusAudit.stop();
       test.skip(true, auth.reason);
     }
 
     if (!(await openPriceLogPage(page))) {
+      statusAudit.stop();
       test.skip(true, 'The Price Log page did not become available after authentication.');
     }
 
     const updatePriceButton = page.getByRole('button', { name: /Update Price/i }).first();
     if (!(await waitForVisible(updatePriceButton, 60000))) {
+      statusAudit.stop();
       test.skip(true, 'The Update Price action was not visible on the Price Log page.');
     }
     await updatePriceButton.click();
@@ -84,5 +90,6 @@ test.describe('Price Change Automation', () => {
     await expect(tableBody).toContainText('PMS', { timeout: 30000 });
     await expect(tableBody).toContainText('1,300', { timeout: 30000 });
     await expect(tableBody).toContainText(/Pending|Submitted/i, { timeout: 30000 });
+    await assertStatusCodeAudit(page, statusAudit, '02-PriceLog.spec.ts');
   });
 });

@@ -1,8 +1,10 @@
 import { test, expect } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
 import {
+  assertStatusCodeAudit,
   ensureAuthenticated,
   openPriceApprovalPage,
+  startStatusCodeAudit,
 } from './helpers/epump';
 
 const QUEUE_STATE_TIMEOUT_MS = 20_000;
@@ -76,22 +78,27 @@ test.describe('Bulk Price Approval', () => {
   test.setTimeout(240000);
 
   test('Successfully approve multiple price requests', async ({ page }) => {
+    const statusAudit = startStatusCodeAudit(page);
     const auth = await ensureAuthenticated(page);
     if (!auth.ok) {
+      statusAudit.stop();
       test.skip(true, auth.reason);
     }
 
     if (!(await openPriceApprovalPage(page))) {
+      statusAudit.stop();
       test.skip(true, 'The Price approval page did not become available after authentication.');
     }
 
     const initialQueueState = await waitForQueueState(page);
     if (initialQueueState === 'empty') {
       console.log('[ info ] No price change requests found. Skipping bulk approval.');
+      await assertStatusCodeAudit(page, statusAudit, '04-BulkApproval.spec.ts');
       return;
     }
 
     if (initialQueueState === 'timeout') {
+      statusAudit.stop();
       test.skip(true, 'The approval queue did not expose a "View" button or an empty-state message.');
     }
 
@@ -160,8 +167,10 @@ test.describe('Bulk Price Approval', () => {
     console.log(`\n[ info ] Successfully approved ${approvedCount} requests.`);
 
     if (approvedCount === 0) {
+      statusAudit.stop();
       test.skip(true, 'Failed to approve any requests.');
     }
+    await assertStatusCodeAudit(page, statusAudit, '04-BulkApproval.spec.ts');
   });
 
 });

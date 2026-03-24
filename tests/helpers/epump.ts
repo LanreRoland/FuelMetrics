@@ -1,17 +1,35 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page, type Response } from '@playwright/test';
 
-const EPUMP_URL = process.env.EPUMP_URL ?? 'https://stations.epump.africa/login';
-const EPUMP_EMAIL = process.env.EPUMP_EMAIL ?? 'mikeandmike@mailinator.com';
-const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD ?? 'Tester.1';
+const EPUMP_URL = process.env.EPUMP_URL || 'https://stations.epump.africa/login';
+const EPUMP_EMAIL = process.env.EPUMP_EMAIL || 'mikeandmike@mailinator.com';
+const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
+const EPUMP_ORIGIN = new URL(EPUMP_URL).origin;
 
 const NAVIGATION_TIMEOUT_MS = 90_000;
 const READY_TIMEOUT_MS = 90_000;
 const DASHBOARD_TIMEOUT_MS = 120_000;
 const POLL_INTERVAL_MS = 1_000;
+const STATUS_AUDIT_SETTLE_MS = 1_500;
+const ALLOWED_RESPONSE_STATUSES = new Set([200, 201]);
+const TRACKED_RESOURCE_TYPES = new Set(['document', 'fetch', 'xhr']);
+const IGNORED_HTTP_METHODS = new Set(['OPTIONS', 'HEAD']);
 
 export type AuthResult =
   | { ok: true }
   | { ok: false; reason: string };
+
+export type StatusAuditFailure = {
+  url: string;
+  status: number;
+  method: string;
+  resourceType: string;
+};
+
+export type StatusCodeAudit = {
+  getFailures: () => StatusAuditFailure[];
+  reset: () => void;
+  stop: () => void;
+};
 
 export function emailInput(page: Page): Locator {
   return page
@@ -37,6 +55,70 @@ export function priceManagementLink(page: Page): Locator {
 
 export function dashboardHeading(page: Page): Locator {
   return page.getByRole('heading', { name: /Dashboard/i }).first();
+}
+
+export function startStatusCodeAudit(page: Page): StatusCodeAudit {
+  const failures: StatusAuditFailure[] = [];
+  const seen = new Set<string>();
+  let active = true;
+
+  const handler = (response: Response) => {
+    if (!active || !shouldTrackResponse(response)) {
+      return;
+    }
+
+    const status = response.status();
+    if (ALLOWED_RESPONSE_STATUSES.has(status)) {
+      return;
+    }
+
+    const request = response.request();
+    const failure = {
+      url: response.url(),
+      status,
+      method: request.method(),
+      resourceType: request.resourceType(),
+    };
+    const key = `${failure.status}|${failure.method}|${failure.resourceType}|${failure.url}`;
+
+    if (!seen.has(key)) {
+      seen.add(key);
+      failures.push(failure);
+    }
+  };
+
+  page.on('response', handler);
+
+  return {
+    getFailures: () => [...failures],
+    reset: () => {
+      failures.length = 0;
+      seen.clear();
+    },
+    stop: () => {
+      if (!active) {
+        return;
+      }
+
+      active = false;
+      page.off('response', handler);
+    },
+  };
+}
+
+export async function assertStatusCodeAudit(
+  page: Page,
+  audit: StatusCodeAudit,
+  context: string,
+): Promise<void> {
+  await page.waitForTimeout(STATUS_AUDIT_SETTLE_MS).catch(() => {});
+  audit.stop();
+
+  const failures = audit.getFailures();
+  expect(
+    failures,
+    `${context} observed non-200/201 same-origin responses:\n${formatStatusAuditFailures(failures)}`,
+  ).toEqual([]);
 }
 
 export async function ensureAuthenticated(page: Page): Promise<AuthResult> {
@@ -222,4 +304,32 @@ async function waitForPredicate(
   }
 
   return false;
+}
+
+function shouldTrackResponse(response: Response): boolean {
+  const url = response.url();
+  if (!url.startsWith(EPUMP_ORIGIN)) {
+    return false;
+  }
+
+  const request = response.request();
+  if (!TRACKED_RESOURCE_TYPES.has(request.resourceType())) {
+    return false;
+  }
+
+  if (IGNORED_HTTP_METHODS.has(request.method().toUpperCase())) {
+    return false;
+  }
+
+  return true;
+}
+
+function formatStatusAuditFailures(failures: StatusAuditFailure[]): string {
+  if (failures.length === 0) {
+    return 'none';
+  }
+
+  return failures
+    .map((failure) => `- ${failure.status} ${failure.method} ${failure.resourceType} ${failure.url}`)
+    .join('\n');
 }

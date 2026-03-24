@@ -1,5 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { ensureAuthenticated, waitForVisible } from './helpers/epump';
+import {
+    assertStatusCodeAudit,
+    ensureAuthenticated,
+    startStatusCodeAudit,
+} from './helpers/epump';
 
 /**
  * 09-ChatSupportWidget.spec.ts
@@ -10,11 +14,13 @@ import { ensureAuthenticated, waitForVisible } from './helpers/epump';
  */
 
 test.describe('Chat Support Widget', () => {
-    test.setTimeout(90000);
+    test.setTimeout(240000);
 
     test('should open chat window when clicking the floating support button', async ({ page }) => {
+        const statusAudit = startStatusCodeAudit(page);
         const auth = await ensureAuthenticated(page);
         if (!auth.ok) {
+            statusAudit.stop();
             test.skip(true, `Authentication failed: ${auth.reason}`);
         }
 
@@ -102,6 +108,7 @@ test.describe('Chat Support Widget', () => {
 
         if (!launcherFound) {
             await page.screenshot({ path: 'chat-widget-not-found.png' });
+            statusAudit.stop();
             test.skip(true, 'Could not locate the chat support floating widget on the dashboard.');
         }
 
@@ -139,5 +146,6 @@ test.describe('Chat Support Widget', () => {
         }
 
         expect(launcherFound).toBeTruthy();
+        await assertStatusCodeAudit(page, statusAudit, '09-ChatSupportWidget.spec.ts');
     });
 });
