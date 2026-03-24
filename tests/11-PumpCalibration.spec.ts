@@ -4,6 +4,7 @@ import {
   ensureAuthenticated,
   startStatusCodeAudit,
   type AuthResult,
+  type StatusCodeAudit,
 } from './helpers/epump';
 
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
@@ -371,6 +372,43 @@ async function setCalibrationValue(page: Page, targetValue = 0.4): Promise<void>
   await page.waitForTimeout(1_000);
 }
 
+// The password-confirm step is where the backend mutation happens, so we watch
+// the shared status audit for any new non-200/201 response right after submit.
+async function submitCalibrationConfirmation(
+  page: Page,
+  modalPassword: Locator,
+  statusAudit: StatusCodeAudit,
+): Promise<void> {
+  const baselineFailureCount = statusAudit.getFailures().length;
+  await clickVisible(
+    page,
+    [
+      page.getByRole('button', { name: /Confirm|Calibrate|Proceed|Submit/i }).last(),
+      page.locator('button, [role="button"]').filter({ hasText: /Confirm|Calibrate|Proceed|Submit/i }).last(),
+    ],
+    'password confirmation',
+  );
+
+  const deadline = Date.now() + 30_000;
+  while (Date.now() < deadline) {
+    const newFailures = statusAudit.getFailures().slice(baselineFailureCount);
+    if (newFailures.length > 0) {
+      const firstFailure = newFailures[0];
+      throw new Error(
+        `Pump calibration confirmation returned ${firstFailure.status} for ${firstFailure.method} ${firstFailure.url}`,
+      );
+    }
+
+    if (!(await modalPassword.isVisible().catch(() => false))) {
+      return;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  throw new Error('Pump calibration confirmation did not complete before timeout.');
+}
+
 test.describe('Pump Calibration Automation', () => {
   test.setTimeout(420_000);
 
@@ -422,17 +460,7 @@ test.describe('Pump Calibration Automation', () => {
     }
 
     await modalPassword.fill(EPUMP_PASSWORD);
-
-    await clickVisible(
-      page,
-      [
-        page.getByRole('button', { name: /Confirm|Calibrate|Proceed|Submit/i }).last(),
-        page.locator('button, [role="button"]').filter({ hasText: /Confirm|Calibrate|Proceed|Submit/i }).last(),
-      ],
-      'password confirmation',
-    );
-
-    await expect(modalPassword).not.toBeVisible({ timeout: 30_000 });
+    await submitCalibrationConfirmation(page, modalPassword, statusAudit);
     await assertStatusCodeAudit(page, statusAudit, '11-PumpCalibration.spec.ts');
   });
 });
