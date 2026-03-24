@@ -11,6 +11,8 @@ function exactTextRegex(value: string): RegExp {
   return new RegExp(`^\\s*${escapeRegex(value)}\\s*$`, 'i');
 }
 
+// The portal mixes links, buttons, and custom controls, so these helpers
+// normalize "find the first visible thing and click it" behavior.
 async function firstVisible(page: Page, candidates: Locator[], timeoutMs = 20_000): Promise<Locator | null> {
   const deadline = Date.now() + timeoutMs;
 
@@ -39,6 +41,8 @@ async function clickVisible(page: Page, candidates: Locator[], description: stri
   });
 }
 
+// Authentication is the flakiest part of the live site, so we retry the
+// shared login helper before giving up and skipping the test.
 async function authenticateWithRetry(page: Page, attempts = 2): Promise<AuthResult> {
   let lastResult: AuthResult = { ok: false, reason: 'Authentication was not attempted.' };
 
@@ -60,6 +64,8 @@ async function authenticateWithRetry(page: Page, attempts = 2): Promise<AuthResu
   return lastResult;
 }
 
+// Navigation supports both the visible sidebar path and a direct route fallback
+// because this app sometimes lands on Pump Calibration without expanding menus.
 async function openPumpCalibrationPage(page: Page): Promise<void> {
   await clickVisible(
     page,
@@ -111,6 +117,8 @@ async function openPumpCalibrationPage(page: Page): Promise<void> {
   ).resolves.not.toBeNull();
 }
 
+// The top-level page button opens the actual calibration drawer where the form
+// fields for region, state, outlets, pumps, and calibration value live.
 async function openCalibrationDrawer(page: Page): Promise<void> {
   await clickVisible(
     page,
@@ -130,6 +138,8 @@ async function openCalibrationDrawer(page: Page): Promise<void> {
   ).resolves.not.toBeNull();
 }
 
+// The app renders dropdown overlays in a few different containers, so we
+// resolve the active one first and then search inside it.
 async function visibleOverlay(page: Page): Promise<Locator> {
   const overlayCandidates = [
     page.locator('.p-multiselect-panel:visible').last(),
@@ -144,6 +154,7 @@ async function visibleOverlay(page: Page): Promise<Locator> {
   return overlay || page.locator('body');
 }
 
+// These helpers handle the custom multi-select widgets used across the drawer.
 async function openSelect(page: Page, label: RegExp): Promise<void> {
   await clickVisible(
     page,
@@ -262,6 +273,8 @@ async function clickSelectAll(
   throw new Error(`Could not find a visible control for: Select all for ${String(label)}`);
 }
 
+// Pump selection is special because it uses checkbox rows instead of a simple
+// chip picker, so we confirm at least one checkbox is actually selected.
 async function selectAllPumps(page: Page): Promise<void> {
   await clickVisible(
     page,
@@ -293,6 +306,8 @@ async function selectAllPumps(page: Page): Promise<void> {
   await page.keyboard.press('Escape').catch(() => {});
 }
 
+// Calibration can appear either as a native range input or a custom slider,
+// so we support both implementations before submitting the form.
 async function setCalibrationValue(page: Page, targetValue = 0.4): Promise<void> {
   const visibleRange = await firstVisible(page, [
     page.locator('input[type="range"]').first(),
@@ -355,6 +370,7 @@ test.describe('Pump Calibration Automation', () => {
   test.setTimeout(420_000);
 
   test('should calibrate all selected pumps for West region Lagos and Ekiti outlets', async ({ page }) => {
+    // Authenticate first, then open the calibration drawer from the sidebar flow.
     const auth = await authenticateWithRetry(page);
     if (!auth.ok) {
       test.skip(true, auth.reason);
@@ -363,11 +379,13 @@ test.describe('Pump Calibration Automation', () => {
     await openPumpCalibrationPage(page);
     await openCalibrationDrawer(page);
 
+    // Scope the calibration request to the requested region, states, outlets, and pumps.
     await chooseMultiSelectOptions(page, /Select Region/i, ['West']);
     await chooseMultiSelectOptions(page, /Select states/i, ['Lagos', 'Ekiti']);
     await clickSelectAll(page, /Select retail outlets/i);
     await selectAllPumps(page);
 
+    // Set the requested calibration value, then authorize the action in the password modal.
     await setCalibrationValue(page, 0.4);
 
     const calibrateButton = await firstVisible(page, [
