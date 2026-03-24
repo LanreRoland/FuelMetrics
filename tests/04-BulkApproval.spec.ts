@@ -1,9 +1,76 @@
 import { test, expect } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import {
   ensureAuthenticated,
   openPriceApprovalPage,
-  waitForVisible,
 } from './helpers/epump';
+
+const QUEUE_STATE_TIMEOUT_MS = 20_000;
+const NEXT_REQUEST_TIMEOUT_MS = 10_000;
+const APPROVE_BUTTON_TIMEOUT_MS = 20_000;
+const DIALOG_CLOSE_TIMEOUT_MS = 15_000;
+const POLL_INTERVAL_MS = 250;
+
+type QueueState = 'ready' | 'empty' | 'timeout';
+type ApproveButtonResult =
+  | { button: Locator; source: 'dialog' | 'global' }
+  | null;
+
+function noRequestsMessage(page: Page): Locator {
+  return page.getByText(/no price change request|empty|no data|no records?/i).first();
+}
+
+function firstViewButton(page: Page): Locator {
+  return page.getByRole('button', { name: /View/i }).first();
+}
+
+function approvalDialog(page: Page): Locator {
+  return page
+    .getByRole('dialog')
+    .or(page.locator('.modal-content'))
+    .or(page.locator('.swal2-modal'))
+    .first();
+}
+
+async function waitForQueueState(page: Page, timeoutMs = QUEUE_STATE_TIMEOUT_MS): Promise<QueueState> {
+  const deadline = Date.now() + timeoutMs;
+  const emptyState = noRequestsMessage(page);
+  const viewButton = firstViewButton(page);
+
+  while (Date.now() < deadline) {
+    if (await emptyState.isVisible().catch(() => false)) {
+      return 'empty';
+    }
+
+    if (await viewButton.isVisible().catch(() => false)) {
+      return 'ready';
+    }
+
+    await page.waitForTimeout(POLL_INTERVAL_MS);
+  }
+
+  return 'timeout';
+}
+
+async function waitForApproveButton(page: Page, dialog: Locator): Promise<ApproveButtonResult> {
+  const deadline = Date.now() + APPROVE_BUTTON_TIMEOUT_MS;
+  const dialogApproveBtn = dialog.getByRole('button', { name: /^Approve$/i }).first();
+  const globalApproveBtn = page.getByRole('button', { name: /^Approve$/i }).first();
+
+  while (Date.now() < deadline) {
+    if (await dialogApproveBtn.isVisible().catch(() => false)) {
+      return { button: dialogApproveBtn, source: 'dialog' };
+    }
+
+    if (await globalApproveBtn.isVisible().catch(() => false)) {
+      return { button: globalApproveBtn, source: 'global' };
+    }
+
+    await page.waitForTimeout(POLL_INTERVAL_MS);
+  }
+
+  return null;
+}
 
 test.describe('Bulk Price Approval', () => {
   test.setTimeout(240000);
@@ -18,16 +85,15 @@ test.describe('Bulk Price Approval', () => {
       test.skip(true, 'The Price approval page did not become available after authentication.');
     }
 
-    const noRequestsMsg = page.getByText(/no price change request|empty|no data|no records?/i).first();
-    if (await waitForVisible(noRequestsMsg, 15000)) {
+    const initialQueueState = await waitForQueueState(page);
+    if (initialQueueState === 'empty') {
       console.log('[ info ] No price change requests found. Skipping bulk approval.');
       return;
     }
 
-    console.log('[ info ] Waiting for request rows to appear...');
-    // Wait for the table body to populate
-    const tableBody = page.locator('tbody').first();
-    await tableBody.waitFor({ state: 'visible', timeout: 45000 }).catch(() => null);
+    if (initialQueueState === 'timeout') {
+      test.skip(true, 'The approval queue did not expose a "View" button or an empty-state message.');
+    }
 
     // The interface does not have selection checkboxes. "Bulk" approval here means
     // sequentially opening and approving multiple requests.
@@ -39,59 +105,62 @@ test.describe('Bulk Price Approval', () => {
     const maxToApprove = 5;
 
     for (let i = 0; i < maxToApprove; i++) {
-        console.log(`\n[ info ] --- Processing approval request ${i + 1} of ${maxToApprove} ---`);
-        
-        // Always get the freshly available first 'View' button
-        const firstViewBtn = page.getByRole('button', { name: /View/i }).first();
-        
-        if (!(await waitForVisible(firstViewBtn, 15000))) {
-            console.log('[ info ] No more "View" buttons found in the queue.');
-            break;
+      console.log(`\n[ info ] --- Processing approval request ${i + 1} of ${maxToApprove} ---`);
+
+      const queueState = i === 0 ? 'ready' : await waitForQueueState(page, NEXT_REQUEST_TIMEOUT_MS);
+      if (queueState === 'empty') {
+        console.log('[ info ] Approval queue is now empty.');
+        break;
+      }
+
+      if (queueState === 'timeout') {
+        console.warn('[ warn ] Timed out waiting for the next request to become actionable.');
+        break;
+      }
+
+      const firstViewBtn = firstViewButton(page);
+      if (!(await firstViewBtn.isVisible().catch(() => false))) {
+        console.log('[ info ] No more "View" buttons found in the queue.');
+        break;
+      }
+
+      console.log('[ info ] Opening price request details...');
+      await firstViewBtn.click();
+
+      console.log('[ info ] Waiting for "Approve" button to appear...');
+      const dialog = approvalDialog(page);
+      const approveBtn = await waitForApproveButton(page, dialog);
+
+      if (!approveBtn) {
+        console.warn(`[ warn ] A request opened, but no "Approve" button was found for iteration ${i + 1}.`);
+        const closeBtn = dialog.getByRole('button', { name: /close|x/i }).first();
+        if (await closeBtn.isVisible().catch(() => false)) {
+          await closeBtn.click();
         }
+        continue;
+      }
 
-        console.log('[ info ] Opening price request details...');
-        await firstViewBtn.click();
+      if (approveBtn.source === 'dialog') {
+        console.log('[ info ] Clicking "Approve" button in dialog...');
+      } else {
+        console.log('[ info ] Dialog not detected, using global "Approve" button.');
+      }
+      await approveBtn.button.click();
 
-        // Wait for the approval dialog
-        const dialog = page.getByRole('dialog').or(page.locator('.modal-content')).or(page.locator('.swal2-modal')).first();
-        const dialogApproveBtn = dialog.getByRole('button', { name: /^Approve$/i }).first();
-
-        console.log('[ info ] Waiting for "Approve" button to appear...');
-        if (!(await waitForVisible(dialogApproveBtn, 20000))) {
-            // Fallback: search globally if no dialog detected
-            const globalApproveBtn = page.getByRole('button', { name: /^Approve$/i }).first();
-            if (await waitForVisible(globalApproveBtn, 5000)) {
-                console.log('[ info ] Dialog not detected, using global "Approve" button.');
-                await globalApproveBtn.click();
-            } else {
-                console.warn(`[ warn ] A request opened, but no "Approve" button was found for iteration ${i + 1}.`);
-                // Try to close the dialog to continue the loop
-                const closeBtn = dialog.getByRole('button', { name: /close|x/i }).first();
-                if (await closeBtn.isVisible()) await closeBtn.click();
-                continue;
-            }
-        } else {
-            console.log('[ info ] Clicking "Approve" button in dialog...');
-            await dialogApproveBtn.click();
-        }
-
-        console.log('[ info ] Verifying approval completion...');
-        await page.waitForTimeout(3000); // Give it a moment to process
-        
-        // Ensure the dialog disappears before the next iteration
-        await expect(dialog).not.toBeVisible({ timeout: 15000 }).catch(() => {
-            console.warn('[ warn ] Dialog did not close automatically after approval.');
+      console.log('[ info ] Verifying approval completion...');
+      if (approveBtn.source === 'dialog') {
+        await expect(dialog).toBeHidden({ timeout: DIALOG_CLOSE_TIMEOUT_MS }).catch(() => {
+          console.warn('[ warn ] Dialog did not close automatically after approval.');
         });
-        
-        // Wait a bit for the table to refresh to avoid StaleElement exceptions on the next loop
-        await page.waitForTimeout(2000);
-        approvedCount++;
+      }
+
+      approvedCount++;
     }
 
     console.log(`\n[ info ] Successfully approved ${approvedCount} requests.`);
 
     if (approvedCount === 0) {
-        test.skip(true, 'Failed to approve any requests.');
+      test.skip(true, 'Failed to approve any requests.');
     }
   });
 
