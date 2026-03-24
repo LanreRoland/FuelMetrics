@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page, type Response } from '@playwright/test';
 import {
   assertStatusCodeAudit,
   ensureAuthenticated,
@@ -8,6 +8,15 @@ import {
 } from './helpers/epump';
 
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
+const EPUMP_ORIGIN = new URL(process.env.EPUMP_URL || 'https://stations.epump.africa/login').origin;
+const FINAL_ACTION_SETTLE_MS = 5_000;
+
+type FinalActionResponse = {
+  url: string;
+  status: number;
+  method: string;
+  resourceType: string;
+};
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -373,40 +382,102 @@ async function setCalibrationValue(page: Page, targetValue = 0.4): Promise<void>
 }
 
 // The password-confirm step is where the backend mutation happens, so we watch
-// the shared status audit for any new non-200/201 response right after submit.
+// the direct post-submit responses and keep listening briefly after the modal
+// closes so a slightly delayed 500 cannot slip through as a false pass.
 async function submitCalibrationConfirmation(
   page: Page,
   modalPassword: Locator,
   statusAudit: StatusCodeAudit,
 ): Promise<void> {
   const baselineFailureCount = statusAudit.getFailures().length;
-  await clickVisible(
-    page,
-    [
-      page.getByRole('button', { name: /Confirm|Calibrate|Proceed|Submit/i }).last(),
-      page.locator('button, [role="button"]').filter({ hasText: /Confirm|Calibrate|Proceed|Submit/i }).last(),
-    ],
-    'password confirmation',
-  );
+  const observedResponses: FinalActionResponse[] = [];
+  const responseHandler = (response: Response) => {
+    const request = response.request();
+    const method = request.method().toUpperCase();
+    const resourceType = request.resourceType();
 
-  const deadline = Date.now() + 30_000;
-  while (Date.now() < deadline) {
-    const newFailures = statusAudit.getFailures().slice(baselineFailureCount);
-    if (newFailures.length > 0) {
-      const firstFailure = newFailures[0];
-      throw new Error(
-        `Pump calibration confirmation returned ${firstFailure.status} for ${firstFailure.method} ${firstFailure.url}`,
-      );
-    }
-
-    if (!(await modalPassword.isVisible().catch(() => false))) {
+    if (!response.url().startsWith(EPUMP_ORIGIN)) {
       return;
     }
 
-    await page.waitForTimeout(500);
-  }
+    if (!['document', 'fetch', 'xhr'].includes(resourceType)) {
+      return;
+    }
 
-  throw new Error('Pump calibration confirmation did not complete before timeout.');
+    if (['OPTIONS', 'HEAD'].includes(method)) {
+      return;
+    }
+
+    observedResponses.push({
+      url: response.url(),
+      status: response.status(),
+      method,
+      resourceType,
+    });
+  };
+
+  page.on('response', responseHandler);
+
+  try {
+    await clickVisible(
+      page,
+      [
+        page.getByRole('button', { name: /Confirm|Calibrate|Proceed|Submit/i }).last(),
+        page.locator('button, [role="button"]').filter({ hasText: /Confirm|Calibrate|Proceed|Submit/i }).last(),
+      ],
+      'password confirmation',
+    );
+
+    const deadline = Date.now() + 30_000;
+    let modalClosed = false;
+
+    while (Date.now() < deadline) {
+      const newFailures = statusAudit.getFailures().slice(baselineFailureCount);
+      if (newFailures.length > 0) {
+        const firstFailure = newFailures[0];
+        throw new Error(
+          `Pump calibration confirmation returned ${firstFailure.status} for ${firstFailure.method} ${firstFailure.url}`,
+        );
+      }
+
+      if (!(await modalPassword.isVisible().catch(() => false))) {
+        modalClosed = true;
+        break;
+      }
+
+      await page.waitForTimeout(500);
+    }
+
+    if (!modalClosed) {
+      throw new Error('Pump calibration confirmation did not complete before timeout.');
+    }
+
+    const settleDeadline = Date.now() + FINAL_ACTION_SETTLE_MS;
+    while (Date.now() < settleDeadline) {
+      const newFailures = statusAudit.getFailures().slice(baselineFailureCount);
+      if (newFailures.length > 0) {
+        const firstFailure = newFailures[0];
+        throw new Error(
+          `Pump calibration confirmation returned ${firstFailure.status} for ${firstFailure.method} ${firstFailure.url}`,
+        );
+      }
+
+      await page.waitForTimeout(500);
+    }
+
+    if (observedResponses.length === 0) {
+      throw new Error('No same-origin response was captured after the final pump calibration confirmation click.');
+    }
+
+    const invalidResponse = observedResponses.find((response) => ![200, 201].includes(response.status));
+    if (invalidResponse) {
+      throw new Error(
+        `Pump calibration final action returned ${invalidResponse.status} for ${invalidResponse.method} ${invalidResponse.url}`,
+      );
+    }
+  } finally {
+    page.off('response', responseHandler);
+  }
 }
 
 test.describe('Pump Calibration Automation', () => {
