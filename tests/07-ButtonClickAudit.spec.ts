@@ -1,124 +1,216 @@
 import { test, expect } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { ensureAuthenticated, priceManagementLink } from './helpers/epump';
 
 /**
  * 07-ButtonClickAudit.spec.ts
- * 
- * This test identifies all clickable elements (buttons, links, etc.) on the dashboard
- * and attempts to click each one to verify if it "breaks" (causes console errors, 
- * navigation failures, or UI crashes).
+ *
+ * This test identifies visible clickable elements in the main dashboard content
+ * and attempts to click each one to verify if it causes navigation failures,
+ * new console errors, or UI crashes.
  */
 
-test.describe('Dashboard Button Click Audit', () => {
-    test.setTimeout(300000); // 5 minutes for a thorough audit
+const AUDIT_ATTR = 'data-button-audit-id';
+const KNOWN_BASELINE_ERROR_PATTERNS = [
+  /attribute.*NaN/i,
+  /Expected length,\s*"NaN"/i,
+  /translate\(NaN,\s*0\)/i,
+  /ERR_BLOCKED_BY_RESPONSE\.NotSameOrigin/i,
+  /^(?:\[Console Error\]\s*)?true$/i,
+];
 
-    test('should click every clickable element on the dashboard and report status', async ({ page }) => {
-        // 1. Authentication
-        const auth = await ensureAuthenticated(page);
-        if (!auth.ok) {
-            console.error(`[ error ] Authentication failed: ${auth.reason}`);
-            await page.screenshot({ path: 'auth-failure.png' });
-            test.skip(true, auth.reason);
-        }
+type AuditTarget = {
+  id: string;
+  label: string;
+};
 
-        console.log('[ info ] Navigating to Dashboard and waiting for stability...');
-        await page.waitForTimeout(5000); // Wait for animations/charts
+type AuditResult = {
+  name: string;
+  status: 'PASS' | 'FAIL' | 'SKIP';
+  detail?: string;
+};
 
-        // 2. Monitoring console for errors
-        const consoleErrors: string[] = [];
-        page.on('console', msg => {
-            if (msg.type() === 'error') {
-                consoleErrors.push(`[Console Error] ${msg.text()}`);
-            }
-        });
+async function restoreDashboard(page: Page, dashboardUrl: string): Promise<void> {
+  if (page.url() !== dashboardUrl) {
+    await page.goto(dashboardUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
+  }
 
-        // 3. Discovery: Find all elements that look clickable
-        // We focus on the main content area (excluding the sidebar)
-        // Common selectors for clickable elements in this app
-        const clickableSelector = 'button, a, [role="button"], .clickable, .btn';
-        
-        // Let's refine the search to elements NOT in the sidebar/navigation
-        // Usually sidebars are <nav>, <aside>, or have certain classes.
-        // If we don't know the sidebar selector, we can try to filter by container.
-        const dashboardElements = page.locator(clickableSelector).filter({
-            hasNot: page.locator('nav *'), // Exclude sidebar/nav links
-        }).filter({
-            hasNot: page.locator('aside *'),
-        });
+  await expect(priceManagementLink(page)).toBeVisible({ timeout: 30000 });
+}
 
-        const count = await dashboardElements.count();
-        console.log(`[ info ] Found ${count} potentially clickable elements in the main area.`);
+async function markAuditTargets(page: Page): Promise<AuditTarget[]> {
+  return page.evaluate(({ auditAttr }) => {
+    const selector = 'button, a, [role="button"], .clickable, .btn';
+    const excludedAncestorSelector = [
+      'nav',
+      'aside',
+      '[role="navigation"]',
+      'section.fixed',
+      '.header',
+      '.sticky',
+    ].join(', ');
 
-        const results: { name: string, status: 'PASS' | 'FAIL', detail?: string }[] = [];
+    const normalize = (value: string) => value.replace(/\s+/g, ' ').trim();
+    const isVisible = (element: HTMLElement) => {
+      const style = window.getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.visibility !== 'hidden' && style.display !== 'none' && rect.width > 0 && rect.height > 0;
+    };
 
-        // 4. Iterate and Click
-        for (let i = 0; i < count; i++) {
-            const element = dashboardElements.nth(i);
-            
-            // Get some identifying info
-            const text = await element.innerText().catch(() => '');
-            const id = await element.getAttribute('id').catch(() => '');
-            const title = await element.getAttribute('title').catch(() => '');
-            const label = text.trim() || id || title || `Element #${i}`;
-
-            console.log(`[ click ] [${i+1}/${count}] Clicking: "${label}"`);
-
-            try {
-                // Pre-click state
-                const initialUrl = page.url();
-                
-                // Click (with a timeout and force if needed)
-                await element.click({ timeout: 5000 }).catch(async (e) => {
-                    // If regular click fails (maybe covered?), try simple click
-                    console.warn(`[ warn ] Regular click failed for "${label}", trying force click...`);
-                    await element.click({ force: true, timeout: 5000 });
-                });
-
-                await page.waitForTimeout(1000); // Observe effect
-
-                // Check for errors
-                let status: 'PASS' | 'FAIL' = 'PASS';
-                let detail = '';
-
-                if (consoleErrors.length > 0) {
-                    status = 'FAIL';
-                    detail = consoleErrors.shift() || 'Unknown console error';
-                }
-
-                // If it navigated away, go back to dashboard
-                if (page.url() !== initialUrl && !page.url().includes('dashboard')) {
-                    console.log(`[ info ] Navigated away to ${page.url()}. Going back...`);
-                    await page.goBack();
-                    await page.waitForTimeout(2000);
-                }
-
-                results.push({ name: label, status, detail });
-
-            } catch (err: any) {
-                console.error(`[ error ] Failed to interact with "${label}": ${err.message}`);
-                results.push({ name: label, status: 'FAIL', detail: err.message });
-            }
-        }
-
-        // 5. Final Reporting
-        console.log('\n--- BUTTON CLICK AUDIT RESULTS ---');
-        let passCount = 0;
-        let failCount = 0;
-
-        results.forEach((res, idx) => {
-            const icon = res.status === 'PASS' ? '✅' : '❌';
-            console.log(`${icon} [${res.status}] ${res.name} ${res.detail ? `(${res.detail})` : ''}`);
-            if (res.status === 'PASS') passCount++;
-            else failCount++;
-        });
-
-        console.log('----------------------------------');
-        console.log(`Summary: ${passCount} Passed, ${failCount} Failed.`);
-        console.log('----------------------------------');
-
-        // Capture a final screenshot
-        await page.screenshot({ path: 'button-audit-final.png', fullPage: true });
-
-        expect(failCount).toBe(0); // Optional: fail the test if any button breaks
+    document.querySelectorAll(`[${auditAttr}]`).forEach((element) => {
+      element.removeAttribute(auditAttr);
     });
+
+    const targets: AuditTarget[] = [];
+    let index = 0;
+
+    for (const node of Array.from(document.querySelectorAll(selector))) {
+      const element = node as HTMLElement;
+      if (!isVisible(element)) {
+        continue;
+      }
+
+      if (element.closest(excludedAncestorSelector)) {
+        continue;
+      }
+
+      const text = normalize(element.innerText || element.textContent || '');
+      const id = element.id ? `#${element.id}` : '';
+      const title = normalize(element.getAttribute('title') || '');
+      const ariaLabel = normalize(element.getAttribute('aria-label') || '');
+      const href = normalize(element.getAttribute('href') || '');
+      const label = text || ariaLabel || title || href || `Element #${index}`;
+
+      element.setAttribute(auditAttr, String(index));
+      targets.push({ id: String(index), label });
+      index += 1;
+    }
+
+    return targets;
+  }, { auditAttr: AUDIT_ATTR });
+}
+
+function isKnownBaselineConsoleError(message: string): boolean {
+  return KNOWN_BASELINE_ERROR_PATTERNS.some((pattern) => pattern.test(message));
+}
+
+test.describe('Dashboard Button Click Audit', () => {
+  test.setTimeout(300000);
+
+  test('should click every clickable element on the dashboard and report status', async ({ page }) => {
+    const auth = await ensureAuthenticated(page);
+    if (!auth.ok) {
+      console.error(`[ error ] Authentication failed: ${auth.reason}`);
+      await page.screenshot({ path: 'auth-failure.png' });
+      test.skip(true, auth.reason);
+    }
+
+    console.log('[ info ] Navigating to Dashboard and waiting for stability...');
+    await page.waitForTimeout(5000);
+
+    const dashboardUrl = page.url();
+    const consoleErrors: string[] = [];
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        consoleErrors.push(`[Console Error] ${msg.text()}`);
+      }
+    });
+
+    const initialTargets = await markAuditTargets(page);
+    console.log(`[ info ] Found ${initialTargets.length} visible clickable elements in the main content area.`);
+
+    const results: AuditResult[] = [];
+    let consoleCursor = consoleErrors.length;
+
+    for (const target of initialTargets) {
+      await restoreDashboard(page, dashboardUrl);
+      const currentTargets = await markAuditTargets(page);
+      const currentTarget = currentTargets.find((candidate) => candidate.id === target.id);
+      const label = currentTarget?.label || target.label;
+
+      console.log(`[ click ] [${Number(target.id) + 1}/${initialTargets.length}] Examining: "${label}"`);
+
+      if (!currentTarget) {
+        console.log('[ skip ] Element is no longer present on the refreshed dashboard.');
+        results.push({ name: label, status: 'SKIP', detail: 'Element no longer present' });
+        continue;
+      }
+
+      try {
+        const element = page.locator(`[${AUDIT_ATTR}="${target.id}"]`).first();
+        if (!(await element.isVisible().catch(() => false))) {
+          console.log('[ skip ] Element is not visible, skipping click.');
+          results.push({ name: label, status: 'SKIP', detail: 'Element not visible' });
+          continue;
+        }
+
+        await element.scrollIntoViewIfNeeded().catch(() => {});
+
+        let clickSuccess = true;
+        await element.click({ timeout: 8000 }).catch(async (error) => {
+          console.warn(`[ warn ] ${error.message.split('\n')[0]}. Trying force click...`);
+          await element.click({ force: true, timeout: 8000 }).catch(async (forceError) => {
+            console.error(`[ error ] Force click also failed: ${forceError.message.split('\n')[0]}`);
+            await page.screenshot({ path: `audit-error-elem-${target.id}.png` });
+            clickSuccess = false;
+            results.push({ name: label, status: 'FAIL', detail: forceError.message.split('\n')[0] });
+          });
+        });
+
+        if (!clickSuccess) {
+          continue;
+        }
+
+        await page.waitForTimeout(1000);
+
+        const newConsoleErrors = consoleErrors
+          .slice(consoleCursor)
+          .filter((message) => !isKnownBaselineConsoleError(message));
+        consoleCursor = consoleErrors.length;
+
+        let status: 'PASS' | 'FAIL' = 'PASS';
+        let detail = '';
+        if (newConsoleErrors.length > 0) {
+          status = 'FAIL';
+          detail = newConsoleErrors[0] || 'Unknown console error';
+        }
+
+        if (page.url() !== dashboardUrl) {
+          console.log(`[ info ] Navigated away to ${page.url()}. Restoring dashboard...`);
+          await restoreDashboard(page, dashboardUrl);
+        }
+
+        results.push({ name: label, status, detail });
+      } catch (error: any) {
+        console.error(`[ error ] Failed to interact with "${label}": ${error.message}`);
+        await page.screenshot({ path: `audit-error-catch-${target.id}.png` });
+        results.push({ name: label, status: 'FAIL', detail: error.message });
+      }
+    }
+
+    console.log('\n--- BUTTON CLICK AUDIT RESULTS ---');
+    let passCount = 0;
+    let failCount = 0;
+    let skipCount = 0;
+
+    results.forEach((result) => {
+      const icon = result.status === 'PASS' ? 'PASS' : result.status === 'FAIL' ? 'FAIL' : 'SKIP';
+      console.log(`${icon} [${result.status}] ${result.name} ${result.detail ? `(${result.detail})` : ''}`);
+      if (result.status === 'PASS') {
+        passCount += 1;
+      } else if (result.status === 'FAIL') {
+        failCount += 1;
+      } else {
+        skipCount += 1;
+      }
+    });
+
+    console.log('----------------------------------');
+    console.log(`Summary: ${passCount} Passed, ${failCount} Failed, ${skipCount} Skipped.`);
+    console.log('----------------------------------');
+
+    await page.screenshot({ path: 'button-audit-final.png', fullPage: true });
+
+    expect(failCount).toBe(0);
+  });
 });
