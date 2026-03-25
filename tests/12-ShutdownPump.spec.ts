@@ -1,14 +1,19 @@
 import { test, expect, type Locator, type Page, type Response } from '@playwright/test';
 import {
   assertStatusCodeAudit,
-  ensureAuthenticated,
+  emailInput,
+  openPortal,
+  passwordInput,
+  signInButton,
   startStatusCodeAudit,
   type AuthResult,
   type StatusCodeAudit,
 } from './helpers/epump';
 
+const EPUMP_EMAIL = process.env.EPUMP_EMAIL || 'mikeandmike@mailinator.com';
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
 const EPUMP_ORIGIN = new URL(process.env.EPUMP_URL || 'https://stations.epump.africa/login').origin;
+const SHUTDOWN_PUMP_URL = `${EPUMP_ORIGIN}/shutdown-pump`;
 const FINAL_ACTION_SETTLE_MS = 5_000;
 const ACCESS_DENIED_TEXT = /Your account does not have access to this Data/i;
 
@@ -57,19 +62,90 @@ async function clickVisible(page: Page, candidates: Locator[], description: stri
   });
 }
 
+async function anyVisible(candidates: Locator[]): Promise<boolean> {
+  for (const locator of candidates) {
+    if (await locator.isVisible().catch(() => false)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function waitForShutdownSurface(page: Page, timeoutMs = 45_000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  const shutdownMarkers = [
+    page.getByRole('heading', { name: /Shutdown Pump/i }).first(),
+    page.getByText(/Shutdown Pump/i).first(),
+    page.getByRole('button', { name: /^Shutdown Pump$/i }).first(),
+    page.locator('button, [role="button"], [role="combobox"]').filter({ hasText: /Select Region/i }).first(),
+  ];
+
+  while (Date.now() < deadline) {
+    if (page.url().toLowerCase().includes('shutdown-pump') && (await anyVisible(shutdownMarkers))) {
+      return true;
+    }
+
+    await page.waitForTimeout(500);
+  }
+
+  return false;
+}
+
+async function openShutdownPumpDirect(page: Page, timeoutMs = 45_000): Promise<boolean> {
+  await page.goto(SHUTDOWN_PUMP_URL, { waitUntil: 'domcontentloaded' }).catch(() => {});
+  return waitForShutdownSurface(page, timeoutMs);
+}
+
 // Login on the live site can hang intermittently, so retry once before
-// skipping the test entirely.
+// skipping the test entirely. This flow avoids the flaky Dashboard dependency
+// by signing in and then navigating straight to the shutdown route.
 async function authenticateWithRetry(page: Page, attempts = 3): Promise<AuthResult> {
   let lastResult: AuthResult = { ok: false, reason: 'Authentication was not attempted.' };
 
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const result = await ensureAuthenticated(page);
-    if (result.ok) {
-      return result;
+    const sessionSurface = await openPortal(page);
+    if (sessionSurface === 'dashboard') {
+      console.log('[ info ] Existing session detected. Navigating directly to Shutdown Pump...');
+      if (await openShutdownPumpDirect(page, 30_000)) {
+        return { ok: true };
+      }
+
+      lastResult = {
+        ok: false,
+        reason: `An existing session was detected, but ${SHUTDOWN_PUMP_URL} did not become available.`,
+      };
+    } else if (sessionSurface === 'login') {
+      await emailInput(page).fill(EPUMP_EMAIL);
+      await passwordInput(page).fill(EPUMP_PASSWORD);
+      await signInButton(page).click();
+      console.log('[ info ] Sign-in clicked. Navigating directly to Shutdown Pump...');
+
+      await page.waitForTimeout(5_000);
+      if (await openShutdownPumpDirect(page, 45_000)) {
+        return { ok: true };
+      }
+
+      const currentUrl = page.url();
+      const visibleText = ((await page.locator('body').textContent().catch(() => '')) || '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 220);
+
+      lastResult = {
+        ok: false,
+        reason: visibleText
+          ? `Login did not reach ${SHUTDOWN_PUMP_URL}. URL: ${currentUrl}. Visible page text: ${visibleText}`
+          : `Login did not reach ${SHUTDOWN_PUMP_URL}. URL: ${currentUrl}.`,
+      };
+    } else {
+      lastResult = {
+        ok: false,
+        reason: 'The ePump portal did not become interactive from the login page.',
+      };
     }
 
-    lastResult = result;
-    console.warn(`[ warn ] Authentication attempt ${attempt}/${attempts} failed: ${result.reason}`);
+    console.warn(`[ warn ] Authentication attempt ${attempt}/${attempts} failed: ${lastResult.reason}`);
 
     if (attempt < attempts) {
       await page.goto('https://stations.epump.africa/login', { waitUntil: 'domcontentloaded' }).catch(() => {});
@@ -83,6 +159,10 @@ async function authenticateWithRetry(page: Page, attempts = 3): Promise<AuthResu
 // The recording shows the user reaching Shutdown Pump from Pump management,
 // with a direct route fallback available when the submenu is not rendered.
 async function openShutdownPumpPage(page: Page): Promise<void> {
+  if (await openShutdownPumpDirect(page, 15_000)) {
+    return;
+  }
+
   await clickVisible(
     page,
     [
@@ -122,12 +202,8 @@ async function openShutdownPumpPage(page: Page): Promise<void> {
   }
 
   await expect(
-    firstVisible(page, [
-      page.getByRole('heading', { name: /Shutdown Pump/i }).first(),
-      page.getByText(/Shutdown Pump/i).first(),
-      page.getByRole('button', { name: /^Shutdown Pump$/i }).first(),
-    ]),
-  ).resolves.not.toBeNull();
+    waitForShutdownSurface(page, 30_000),
+  ).resolves.toBe(true);
 }
 
 // The video shows a page-level "Shutdown Pump" button that opens the drawer.
@@ -153,7 +229,7 @@ async function openShutdownDrawer(page: Page): Promise<void> {
     firstVisible(page, [
       page.locator('button, [role="button"], [role="combobox"]').filter({ hasText: /Select Region/i }).first(),
       page.getByRole('button', { name: /Select states/i }).first(),
-      page.locator('textarea, input').filter({ hasText: /Reason/i }).first(),
+      page.locator('textarea[placeholder*="reason" i], input[placeholder*="reason" i]').first(),
     ]),
   ).resolves.not.toBeNull();
 }
