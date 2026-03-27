@@ -561,25 +561,68 @@ async function submitShutdownConfirmation(
 test.describe('Pump Shutdown Automation', () => {
   test.setTimeout(420_000);
 
-  test('should submit the recorded shutdown pump flow for West region Lagos', async ({ page }) => {
+  test('should validate each shutdown pump action without executing the shutdown', async ({ page }) => {
     const statusAudit = startStatusCodeAudit(page);
 
-    // Authenticate first, then open the recorded shutdown-pump flow.
     const auth = await authenticateWithRetry(page);
     if (!auth.ok) {
       statusAudit.stop();
       test.skip(true, auth.reason);
     }
 
-    await openShutdownPumpPage(page);
-    await openShutdownDrawer(page);
+    await test.step('open shutdown pump page', async () => {
+      await openShutdownPumpPage(page);
+      await expect(waitForShutdownSurface(page, 10_000)).resolves.toBe(true);
+      
+      // Save screenshot for debugging
+      await page.screenshot({ path: 'shutdown-pump-access-check.png', fullPage: true }).catch(() => {});
+      
+      // After page loads, validate that credentials have shutdown pump access
+      const pageText = await page.locator('body').textContent().catch(() => '');
+      if (pageText && ACCESS_DENIED_TEXT.test(pageText)) {
+        throw new Error('VALIDATION FAILED: Account Access Denied - The provided credentials do not have permission to access the shutdown pump feature.');
+      }
+    });
 
-    // Recreate the drawer selections shown in the recording.
-    await chooseMultiSelectOptions(page, /Select Region/i, ['West']);
-    await chooseMultiSelectOptions(page, /Select states/i, ['Lagos']);
-    await clickSelectAll(page, /Select retail outlets/i, ['Outlet Demo', 'Outlet demo 4', 'Demo 2'], /Demo/i);
-    await selectAllPumps(page);
-    await fillShutdownReason(page, 'No reason');
+    await test.step('open shutdown drawer', async () => {
+      await openShutdownDrawer(page);
+      await expect(
+        firstVisible(page, [
+          page.locator('button, [role="button"], [role="combobox"]').filter({ hasText: /Select Region/i }).first(),
+          page.getByRole('button', { name: /Select Region/i }).first(),
+        ]),
+      ).resolves.not.toBeNull();
+    });
+
+    await test.step('select region and state', async () => {
+      await chooseMultiSelectOptions(page, /Select Region/i, ['West']);
+      await chooseMultiSelectOptions(page, /Select states/i, ['Lagos']);
+      await expect(
+        firstVisible(page, [
+          page.locator('button, [role="button"]').filter({ hasText: /West/i }).first(),
+        ]),
+      ).resolves.not.toBeNull();
+      await expect(
+        firstVisible(page, [
+          page.locator('button, [role="button"]').filter({ hasText: /Lagos/i }).first(),
+        ]),
+      ).resolves.not.toBeNull();
+    });
+
+    await test.step('select outlets and pumps', async () => {
+      await clickSelectAll(page, /Select retail outlets/i, ['Outlet Demo', 'Outlet demo 4', 'Demo 2'], /Demo/i);
+      await selectAllPumps(page);
+    });
+
+    await test.step('fill shutdown reason', async () => {
+      await fillShutdownReason(page, 'No reason');
+      await expect(
+        firstVisible(page, [
+          page.locator('textarea[placeholder*="reason" i]').first(),
+          page.locator('input[placeholder*="reason" i]').first(),
+        ]),
+      ).resolves.not.toBeNull();
+    });
 
     const shutdownButton = await firstVisible(page, [
       page.getByRole('button', { name: /^Shutdown$/i }).first(),
@@ -591,24 +634,27 @@ test.describe('Pump Shutdown Automation', () => {
       throw new Error('The green Shutdown button was not visible after filling the shutdown form.');
     }
 
-    await expect(shutdownButton).toBeEnabled({ timeout: 20_000 });
+    await test.step('open confirmation modal (no execution)', async () => {
+      await expect(shutdownButton).toBeEnabled({ timeout: 20_000 });
+      await shutdownButton.click().catch(async () => {
+        await shutdownButton.click({ force: true });
+      });
 
-    await shutdownButton.click().catch(async () => {
-      await shutdownButton.click({ force: true });
+      const modalPassword = await firstVisible(page, [
+        page.locator('input[type="password"]').last(),
+        page.locator('input[placeholder*="password" i]').last(),
+      ], 20_000);
+
+      if (!modalPassword) {
+        await page.screenshot({ path: 'shutdown-pump-password-modal-missing.png', fullPage: true });
+        throw new Error('The password confirmation modal did not appear after clicking Shutdown.');
+      }
+
+      await expect(modalPassword).toBeVisible();
+      await page.keyboard.press('Escape').catch(() => {});
+      await expect(modalPassword).not.toBeVisible({ timeout: 10_000 });
     });
 
-    const modalPassword = await firstVisible(page, [
-      page.locator('input[type="password"]').last(),
-      page.locator('input[placeholder*="password" i]').last(),
-    ], 20_000);
-
-    if (!modalPassword) {
-      await page.screenshot({ path: 'shutdown-pump-password-modal-missing.png', fullPage: true });
-      throw new Error('The password confirmation modal did not appear after clicking Shutdown.');
-    }
-
-    await modalPassword.fill(EPUMP_PASSWORD);
-    await submitShutdownConfirmation(page, modalPassword, statusAudit);
     await assertStatusCodeAudit(page, statusAudit, '12-ShutdownPump.spec.ts');
   });
 });

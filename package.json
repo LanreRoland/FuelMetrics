@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "npx playwright test"
+    "test": "npx playwright test",
+    "test:check": "npx playwright test --list",
+    "test:ci": "npx playwright test tests/10-StationCountValidation.spec.ts --workers=1",
+    "test:ci:full": "npx playwright test --workers=1"
   },
   "keywords": [],
   "author": "",

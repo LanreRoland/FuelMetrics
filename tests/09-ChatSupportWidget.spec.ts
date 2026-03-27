@@ -31,14 +31,13 @@ test.describe('Chat Support Widget', () => {
         // 1. Attempt to locate the chat launcher
         console.log('[ info ] Locating the chat floating button...');
 
-        // Common chat widget framing strategies (Intercom, Zendesk, Tawk, Crisp, generic)
-        const commonIframeLocators = [
-            page.frameLocator('iframe[title*="chat" i]').first().locator('body'),
-            page.frameLocator('iframe[title*="widget" i]').first().locator('body'),
-            page.frameLocator('iframe[id*="intercom" i]').first().locator('.intercom-launcher-frame, [role="button"]'),
-            page.frameLocator('iframe[src*="tawk" i]').first().locator('body'),
-            page.frameLocator('iframe[src*="crisp" i]').first().locator('body'),
-            page.frameLocator('.zsiq_floatmain').first().locator('body') // SalesIQ
+        const iframeSelectors = [
+            'iframe[title*="chat" i]',
+            'iframe[title*="widget" i]',
+            'iframe[id*="intercom" i]',
+            'iframe[src*="tawk" i]',
+            'iframe[src*="crisp" i]',
+            '.zsiq_floatmain iframe',
         ];
 
         // Generic DOM fallback just in case it's not an iframe
@@ -47,27 +46,35 @@ test.describe('Chat Support Widget', () => {
         ).first();
 
         let launcherFound = false;
-        let isIframe = false;
         let successfulLauncher: any = null;
 
-        // Try iframes
-        for (const frame of commonIframeLocators) {
-            if (await frame.count() > 0) {
-                // We need to find the actual clickable element inside the frame
-                const clickable = frame.locator('button, [role="button"], a, svg').first();
-                if (await clickable.count() > 0 && await clickable.isVisible()) {
+        // Try each iframe candidate individually to avoid strict-mode violations
+        for (const selector of iframeSelectors) {
+            const frames = page.locator(selector);
+            const frameCount = await frames.count();
+
+            for (let index = 0; index < frameCount; index += 1) {
+                const frameHandle = await frames.nth(index).contentFrame();
+                if (!frameHandle) continue;
+
+                const clickable = frameHandle
+                    .locator('button, [role="button"], a, svg')
+                    .first();
+
+                if (await clickable.isVisible().catch(() => false)) {
                     successfulLauncher = clickable;
-                    isIframe = true;
                     launcherFound = true;
-                    console.log('[ info ] Found chat launcher inside an iframe.');
+                    console.log(`[ info ] Found chat launcher in iframe ${selector} (index ${index}).`);
                     break;
                 }
             }
+
+            if (launcherFound) break;
         }
 
         // Try DOM
         if (!launcherFound) {
-            if (await commonDomLocators.count() > 0 && await commonDomLocators.isVisible()) {
+            if (await commonDomLocators.count() > 0 && await commonDomLocators.isVisible().catch(() => false)) {
                 successfulLauncher = commonDomLocators;
                 launcherFound = true;
                 console.log('[ info ] Found chat launcher in the main DOM.');
