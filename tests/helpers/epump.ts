@@ -130,23 +130,36 @@ export async function ensureAuthenticated(page: Page, email?: string, password?:
     };
   }
 
+  const targetEmail = email || EPUMP_EMAIL;
+  const isTargetAdmin = targetEmail.toLowerCase().includes('fuelmetrics') || targetEmail.toLowerCase().includes('olarenwaju');
+
   if (sessionSurface === 'dashboard') {
+    const currentUrl = page.url();
+    const currentIsAdmin = currentUrl.includes('/stations');
+    
+    // If we want admin but are on station dashboard, or vice versa, OR if we simply want a custom login, logout and restart.
+    if (isTargetAdmin !== currentIsAdmin || email) {
+      console.log(`[ info ] Resetting session to ensure clean login as ${targetEmail}.`);
+      await logout(page);
+      return ensureAuthenticated(page, email, password);
+    }
     return { ok: true };
   }
 
-  await emailInput(page).fill(email || EPUMP_EMAIL);
+  await emailInput(page).fill(targetEmail);
   await passwordInput(page).fill(password || EPUMP_PASSWORD);
   await signInButton(page).click();
-  console.log('[ info ] Sign-in clicked. Waiting for dashboard or hang...');
+  console.log(`[ info ] Sign-in clicked as ${targetEmail}. Waiting for dashboard or hang...`);
 
-  // If it hangs on the spinner, try direct navigation after 20s
+  // If it hangs on the spinner, try direct navigation after 30s
   const dashboardReached = await waitForDashboard(page, 30000);
   if (dashboardReached) {
     return { ok: true };
   }
 
   console.log('[ info ] Dashboard not reached in 30s. Attempting direct navigation fallback...');
-  await page.goto('https://stations.epump.africa/Dashboard', { waitUntil: 'domcontentloaded' }).catch(() => {});
+  const fallbackUrl = isTargetAdmin ? 'https://stations.epump.africa/stations' : 'https://stations.epump.africa/Dashboard';
+  await page.goto(fallbackUrl, { waitUntil: 'domcontentloaded' }).catch(() => {});
   
   if (await waitForDashboard(page, DASHBOARD_TIMEOUT_MS)) {
     return { ok: true };
@@ -160,6 +173,30 @@ export async function ensureAuthenticated(page: Page, email?: string, password?:
       ? `Login did not reach the dashboard. URL: ${currentUrl}. Visible page text: ${visibleText}`
       : `Login did not reach the dashboard. URL: ${currentUrl}.`,
   };
+}
+
+export async function logout(page: Page): Promise<void> {
+  console.log('[ info ] Attempting logout...');
+  try {
+    const userIcon = page.locator('.pi-user, .user-profile, .user-name, [class*="user"]').first();
+    if (await waitForVisible(userIcon, 5000)) {
+      await userIcon.click();
+      const logoutBtn = page.getByText(/Logout/i).first();
+      if (await waitForVisible(logoutBtn, 5000)) {
+        await logoutBtn.click();
+        // Handle confirmation modal if any
+        const confirmLogout = page.getByRole('button', { name: /Logout/i }).last();
+        if (await waitForVisible(confirmLogout, 3000)) {
+          await confirmLogout.click();
+        }
+        await page.waitForURL('**/login', { timeout: 10000 }).catch(() => {});
+      }
+    }
+  } catch (err) {
+    console.warn('[ warn ] Logout failed or timed out. Clearing cookies as fallback.', err);
+  }
+  await page.context().clearCookies();
+  await page.context().clearPermissions();
 }
 
 export async function navigateToCompanyDashboard(page: Page, companyName: string): Promise<boolean> {
