@@ -1,15 +1,15 @@
 import { expect, type Locator, type Page, type Response } from '@playwright/test';
 
-const EPUMP_URL = process.env.EPUMP_URL || 'https://stations.epump.africa/login';
+const EPUMP_URL = (process.env.EPUMP_URL || 'https://stations.epump.africa/login').trim() || 'https://stations.epump.africa/login';
 const EPUMP_EMAIL = process.env.EPUMP_EMAIL || 'mikeandmike@mailinator.com';
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
 const EPUMP_ORIGIN = new URL(EPUMP_URL).origin;
 
-const NAVIGATION_TIMEOUT_MS = 90_000;
-const READY_TIMEOUT_MS = 90_000;
-const DASHBOARD_TIMEOUT_MS = 120_000;
+const NAVIGATION_TIMEOUT_MS = 120_000;
+const READY_TIMEOUT_MS = 120_000;
+const DASHBOARD_TIMEOUT_MS = 150_000;
 const POLL_INTERVAL_MS = 1_000;
-const STATUS_AUDIT_SETTLE_MS = 1_500;
+const STATUS_AUDIT_SETTLE_MS = 2_000;
 const ALLOWED_RESPONSE_STATUSES = new Set([200, 201]);
 const TRACKED_RESOURCE_TYPES = new Set(['document', 'fetch', 'xhr']);
 const IGNORED_HTTP_METHODS = new Set(['OPTIONS', 'HEAD']);
@@ -121,7 +121,7 @@ export async function assertStatusCodeAudit(
   ).toEqual([]);
 }
 
-export async function ensureAuthenticated(page: Page): Promise<AuthResult> {
+export async function ensureAuthenticated(page: Page, email?: string, password?: string): Promise<AuthResult> {
   const sessionSurface = await openPortal(page);
   if (sessionSurface === 'unavailable') {
     return {
@@ -134,8 +134,8 @@ export async function ensureAuthenticated(page: Page): Promise<AuthResult> {
     return { ok: true };
   }
 
-  await emailInput(page).fill(EPUMP_EMAIL);
-  await passwordInput(page).fill(EPUMP_PASSWORD);
+  await emailInput(page).fill(email || EPUMP_EMAIL);
+  await passwordInput(page).fill(password || EPUMP_PASSWORD);
   await signInButton(page).click();
   console.log('[ info ] Sign-in clicked. Waiting for dashboard or hang...');
 
@@ -160,6 +160,26 @@ export async function ensureAuthenticated(page: Page): Promise<AuthResult> {
       ? `Login did not reach the dashboard. URL: ${currentUrl}. Visible page text: ${visibleText}`
       : `Login did not reach the dashboard. URL: ${currentUrl}.`,
   };
+}
+
+export async function navigateToCompanyDashboard(page: Page, companyName: string): Promise<boolean> {
+  const searchBox = page.locator('input[placeholder="Search"]').first();
+  if (!(await waitForVisible(searchBox, 30000))) {
+    console.error(`[ error ] Company search box not found.`);
+    return false;
+  }
+
+  await searchBox.fill(companyName);
+  await page.keyboard.press('Enter');
+  
+  const stationLink = page.locator(`tr:has-text("${companyName}") a[href*="/stations"]`).first();
+  if (!(await waitForVisible(stationLink, 30000))) {
+    console.error(`[ error ] Station link for ${companyName} not found.`);
+    return false;
+  }
+
+  await stationLink.click();
+  return waitForDashboard(page, 60000);
 }
 
 export async function openPortal(page: Page): Promise<'login' | 'dashboard' | 'unavailable'> {

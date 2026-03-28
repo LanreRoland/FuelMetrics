@@ -58,7 +58,7 @@ jobs:
     - name: Install Playwright Chrome
       run: npx playwright install --with-deps chrome
     - name: Run stable smoke suite
-      run: npm run test:ci
+      run: npm run test:ci -- --trace retain-on-failure
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
@@ -90,7 +90,7 @@ jobs:
     - name: Install Playwright Chrome
       run: npx playwright install --with-deps chrome
     - name: Run full live suite
-      run: npm run test:ci:full
+      run: npm run test:ci:full -- --trace retain-on-failure
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:

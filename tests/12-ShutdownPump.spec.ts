@@ -12,7 +12,8 @@ import {
 
 const EPUMP_EMAIL = process.env.EPUMP_EMAIL || 'mikeandmike@mailinator.com';
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
-const EPUMP_ORIGIN = new URL(process.env.EPUMP_URL || 'https://stations.epump.africa/login').origin;
+const EPUMP_URL = (process.env.EPUMP_URL || 'https://stations.epump.africa/login').trim() || 'https://stations.epump.africa/login';
+const EPUMP_ORIGIN = new URL(EPUMP_URL).origin;
 const SHUTDOWN_PUMP_URL = `${EPUMP_ORIGIN}/shutdown-pump`;
 const FINAL_ACTION_SETTLE_MS = 5_000;
 const ACCESS_DENIED_TEXT = /Your account does not have access to this Data/i;

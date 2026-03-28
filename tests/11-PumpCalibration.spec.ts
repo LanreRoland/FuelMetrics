@@ -8,7 +8,8 @@ import {
 } from './helpers/epump';
 
 const EPUMP_PASSWORD = process.env.EPUMP_PASSWORD || 'Tester.1';
-const EPUMP_ORIGIN = new URL(process.env.EPUMP_URL || 'https://stations.epump.africa/login').origin;
+const EPUMP_URL = (process.env.EPUMP_URL || 'https://stations.epump.africa/login').trim() || 'https://stations.epump.africa/login';
+const EPUMP_ORIGIN = new URL(EPUMP_URL).origin;
 const FINAL_ACTION_SETTLE_MS = 5_000;
 
 type FinalActionResponse = {
