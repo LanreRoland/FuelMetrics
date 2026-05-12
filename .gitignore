@@ -1,0 +1,10 @@
+.env
+node_modules/
+playwright-report/
+test-results/
+*.log
+*.png
+*.zip
+*.ttf
+*.webp
+*.mp4
