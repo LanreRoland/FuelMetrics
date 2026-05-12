@@ -7,8 +7,8 @@ import {
 } from './helpers/epump';
 import { ShutdownPumpPage } from './pages/ShutdownPumpPage';
 
-const ADMIN_EMAIL = 'olarenwaju.ajumobi@fuelmetrics.com.ng';
-const ADMIN_PASSWORD = 'Jumby@2014';
+const ADMIN_EMAIL = process.env.EPUMP_EMAIL;
+const ADMIN_PASSWORD = process.env.EPUMP_PASSWORD;
 const TARGET_COMPANY = 'Demonstration Limited';
 const ACCESS_DENIED_TEXT = /Your account does not have access to this Data/i;
 
@@ -18,6 +18,13 @@ test.describe('Support Admin: Shutdown Pump Access', () => {
   test('should successfully navigate as admin to company shutdown pump module', async ({ page }) => {
     const statusAudit = startStatusCodeAudit(page);
     const shutdownPage = new ShutdownPumpPage(page);
+
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      statusAudit.stop();
+      throw new Error(
+        'Missing required credentials: EPUMP_EMAIL and/or EPUMP_PASSWORD. Configure them in repository secrets.',
+      );
+    }
 
     // 1. Login as Support Admin
     const auth = await ensureAuthenticated(page, ADMIN_EMAIL, ADMIN_PASSWORD);
