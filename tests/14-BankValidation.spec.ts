@@ -7,8 +7,8 @@ import {
 } from './helpers/epump';
 import { BankPage } from './pages/BankPage';
 
-const ADMIN_EMAIL = 'olarenwaju.ajumobi@fuelmetrics.com.ng';
-const ADMIN_PASSWORD = 'Jumby@2014';
+const ADMIN_EMAIL = process.env.EPUMP_EMAIL;
+const ADMIN_PASSWORD = process.env.EPUMP_PASSWORD;
 const TARGET_COMPANY = 'Demonstration Limited';
 const TARGET_STATION_COUNT = '150';
 
@@ -18,6 +18,13 @@ test.describe('Bank Validation Automation', () => {
   test('should validate Union Bank and First Bank are available in bank list', async ({ page }) => {
     const statusAudit = startStatusCodeAudit(page);
     const bankPage = new BankPage(page);
+
+    if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+      statusAudit.stop();
+      throw new Error(
+        'Missing required credentials: EPUMP_EMAIL and/or EPUMP_PASSWORD. Configure them in repository secrets.',
+      );
+    }
 
     const auth = await ensureAuthenticated(page, ADMIN_EMAIL, ADMIN_PASSWORD);
     if (!auth.ok) {
